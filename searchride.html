@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UniRide — Search Rides</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <h1>Find a Ride</h1>
+    <div class="header-actions">
+      <button id="darkToggle" class="icon-btn">🌙</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <section class="card">
+      <h2>🔍 Search for a Ride</h2>
+      <p class="small">Select your route and find available verified rides.</p>
+
+      <label>Pickup Location</label>
+      <select id="searchPickup">
+        <option value="">Select Pickup</option>
+        <option>RR Gate</option>
+        <option>College Gate</option>
+        <option>Global Mall</option>
+        <option>Jnana Bharathi</option>
+        <option>Uttarahalli</option>
+      </select>
+
+      <label>Drop Location</label>
+      <select id="searchDrop">
+        <option value="">Select Drop</option>
+        <option>RR Gate</option>
+        <option>College Gate</option>
+        <option>Global Mall</option>
+        <option>Jnana Bharathi</option>
+        <option>Uttarahalli</option>
+      </select>
+
+      <button id="searchBtn" class="btn" style="margin-top:12px">Search Ride</button>
+
+      <div id="ridesList" class="ride-list"></div>
+    </section>
+  </main>
+
+  <footer class="footer small">
+    <p>© 2025 UniRide — campus-only rides</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const darkPref = localStorage.getItem("uniride_darkmode") === "1";
+      if(darkPref) document.body.classList.add("dark");
+      const darkToggle = document.getElementById("darkToggle");
+      darkToggle.textContent = darkPref ? "☀️" : "🌙";
+      darkToggle.addEventListener("click", ()=> {
+        uniride.toggleDarkMode();
+        darkToggle.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+      });
+
+      const user = uniride.getStoredUser();
+      if(!user) { window.location.href = "login.html"; return; }
+
+      document.getElementById("searchBtn").addEventListener("click", () => {
+        const pickup = document.getElementById("searchPickup").value;
+        const drop = document.getElementById("searchDrop").value;
+        const list = document.getElementById("ridesList");
+        list.innerHTML = "";
+
+        if(!pickup || !drop){ alert("⚠ Please select both Pickup and Drop."); return; }
+
+        const rides = uniride.getRides();
+        const now = new Date();
+        const valid = rides.filter(r => {
+          try {
+            const rideDate = new Date(`${r.date}T${r.time}`);
+            return r.pickup === pickup && r.drop === drop && rideDate >= now && Number(r.seats) > 0;
+          } catch(e) {
+            return r.pickup === pickup && r.drop === drop && Number(r.seats) > 0;
+          }
+        });
+
+        if(valid.length === 0){ list.innerHTML = "<p>No rides available for this route.</p>"; return; }
+
+        valid.forEach(r => {
+          const postedBy = r.postedBy || r.driver || r.name || "Unknown";
+          const vehicleNumber = r.vehicle || r.vehicleNumber || "N/A";
+          const vehicleType = r.vehicleType || r.type || "Vehicle";
+          const div = document.createElement("div");
+          div.className = "ride-item";
+          div.innerHTML = `
+            <h4>${r.pickup} ➡ ${r.drop}</h4>
+            <p><b>Driver:</b> ${postedBy}</p>
+            <p><b>Vehicle:</b> ${vehicleNumber} (${vehicleType})</p>
+            <p><b>Date:</b> ${r.date} | <b>Time:</b> ${r.time}</p>
+            <p><b>Fare:</b> ₹${r.fare} | <b>Seats:</b> ${r.seats}</p>
+            <div style="margin-top:8px">
+              <button class="btn-book btn" data-id="${r.id}">Book Ride</button>
+              <button class="btn-docs secondary" data-id="${r.id}" style="margin-left:8px">View Docs</button>
+            </div>
+          `;
+          list.appendChild(div);
+        });
+
+        // attach events
+        document.querySelectorAll(".btn-book").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.id;
+            uniride.bookRideById(id);
+            // refresh results to update seat counts
+            document.getElementById("searchBtn").click();
+          });
+        });
+        document.querySelectorAll(".btn-docs").forEach(btn => {
+          btn.addEventListener("click", ()=> {
+            const id = btn.dataset.id;
+            // open small window showing DL (if available)
+            const rides = uniride.getRides();
+            const r = rides.find(x=>String(x.id)===String(id));
+            if(!r){ alert("No docs available."); return; }
+            const w = window.open("", "_blank", "width=520,height=680");
+            w.document.title = "Driver Documents";
+            w.document.body.style.fontFamily = "Segoe UI, sans-serif";
+            w.document.body.innerHTML = `
+              <div style="padding:16px">
+                <h2>${r.postedBy || r.driver || 'Driver'}</h2>
+                <p><b>Phone:</b> ${r.phone || 'N/A'}</p>
+                ${r.dl ? `<div><h4>Driving License</h4><img src="${r.dl}" style="max-width:100%;border-radius:8px" /></div>` : '<p>No DL provided.</p>'}
+              </div>
+            `;
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

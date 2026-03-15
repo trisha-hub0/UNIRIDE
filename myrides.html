@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UniRide — My Rides</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <h1>My Rides</h1>
+    <div class="header-actions">
+      <button id="darkToggle" class="icon-btn">🌙</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <section class="card">
+      <h2>🚗 Rides I Posted</h2>
+      <div id="postedRides" class="ride-list"></div>
+    </section>
+
+    <section class="card">
+      <h2>🧍‍♀️ Rides I Booked</h2>
+      <div id="bookedRides" class="ride-list"></div>
+    </section>
+  </main>
+
+  <footer class="footer small">
+    <p>© 2025 UniRide — secure and verified rides</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const darkPref = localStorage.getItem("uniride_darkmode") === "1";
+      if(darkPref) document.body.classList.add("dark");
+      const darkToggle = document.getElementById("darkToggle");
+      darkToggle.textContent = darkPref ? "☀️" : "🌙";
+      darkToggle.addEventListener("click", ()=> {
+        uniride.toggleDarkMode();
+        darkToggle.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+      });
+
+      const user = uniride.getStoredUser();
+      if(!user) { window.location.href = "login.html"; return; }
+
+      function render() {
+        const rides = uniride.getRides();
+        const posted = rides.filter(r=> r.email === user.email);
+        const bookings = uniride.getBookings().filter(b => b.passengerEmail === user.email);
+
+        const postedDiv = document.getElementById("postedRides");
+        const bookedDiv = document.getElementById("bookedRides");
+        postedDiv.innerHTML = "";
+        bookedDiv.innerHTML = "";
+
+        if(posted.length === 0) postedDiv.innerHTML = "<p>No rides posted yet.</p>";
+        else posted.forEach(r => {
+          const div = document.createElement("div");
+          div.className = "ride-item";
+          div.innerHTML = `
+            <h4>${r.pickup} ➡ ${r.drop}</h4>
+            <p><b>Date:</b> ${r.date} | <b>Time:</b> ${r.time}</p>
+            <p><b>Vehicle:</b> ${r.vehicle} (${r.vehicleType||r.type||''})</p>
+            <p><b>Fare:</b> ₹${r.fare} | <b>Seats left:</b> ${r.seats}</p>
+            <p><b>Status:</b> ${r.booked ? "Partially/fully booked" : "Available"}</p>
+            <div style="margin-top:8px"><button class="btn cancel-post" data-id="${r.id}">Cancel Ride</button></div>
+          `;
+          postedDiv.appendChild(div);
+        });
+
+        if(bookings.length === 0) bookedDiv.innerHTML = "<p>No rides booked yet.</p>";
+        else bookings.forEach(b => {
+          const div = document.createElement("div");
+          div.className = "ride-item";
+          const ride = uniride.getRides().find(r=>String(r.id)===String(b.rideId));
+          div.innerHTML = `
+            <h4>${ride ? (ride.pickup + ' ➡ ' + ride.drop) : 'Ride'}</h4>
+            <p><b>Driver:</b> ${ride ? (ride.postedBy || ride.driver || ride.name) : 'Unknown'}</p>
+            <p><b>Date:</b> ${ride ? ride.date : ''} | <b>Time:</b> ${ride ? ride.time : ''}</p>
+            <p><b>Fare:</b> ₹${b.fare || (ride && ride.fare) || 'N/A'}</p>
+            <p><b>Your OTP:</b> ${b.otp}</p>
+            <div style="margin-top:8px">
+              <button class="btn verify" data-id="${b.rideId}">Verify OTP</button>
+              <button class="btn secondary cancel-booking" data-id="${b.id}" style="margin-left:8px">Cancel Booking</button>
+            </div>
+          `;
+          bookedDiv.appendChild(div);
+        });
+
+        // attach events
+        document.querySelectorAll(".cancel-post").forEach(btn=>{
+          btn.addEventListener("click", ()=> {
+            const id = btn.dataset.id;
+            if(confirm("Cancel this posted ride?")) {
+              uniride.cancelRideById(id);
+              render();
+            }
+          });
+        });
+        document.querySelectorAll(".cancel-booking").forEach(btn=>{
+          btn.addEventListener("click", ()=> {
+            const bid = btn.dataset.id;
+            if(confirm("Cancel this booking?")) {
+              uniride.cancelBookingById(bid);
+              render();
+            }
+          });
+        });
+        document.querySelectorAll(".verify").forEach(btn=>{
+          btn.addEventListener("click", ()=> {
+            const rideId = btn.dataset.id;
+            const entered = prompt("Enter the 4-digit OTP received:");
+            if(!entered) return;
+            // check bookings for this ride and current user
+            const bookings = uniride.getBookings();
+            const b = bookings.find(x => String(x.rideId) === String(rideId) && x.passengerEmail === user.email);
+            if(!b){ alert("Booking not found for this ride."); return; }
+            if(String(b.otp) === String(entered)) alert("✅ OTP verified! Have a safe trip.");
+            else alert("❌ Invalid OTP.");
+          });
+        });
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>

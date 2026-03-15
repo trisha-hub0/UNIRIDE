@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UniRide — Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">UR</div>
+    <h1>UniRide Dashboard</h1>
+    <div class="header-actions">
+      <button id="darkToggle" class="icon-btn" title="Toggle Dark Mode">🌙</button>
+      <button id="logoutBtn" class="icon-btn" title="Logout">⎋</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <section class="welcome">
+      <h2 id="welcomeName">Welcome to UniRide</h2>
+      <p class="small">Carpool smarter — safe, verified & campus-only rides.</p>
+    </section>
+
+    <section class="card-grid">
+      <div class="dash-card" onclick="location.href='postride.html'">
+        <div class="card-icon">🚗</div>
+        <h3>Post a Ride</h3>
+        <p>Offer seats, upload DL, set route & time.</p>
+      </div>
+
+      <div class="dash-card" onclick="location.href='searchride.html'">
+        <div class="card-icon">🔍</div>
+        <h3>Search Rides</h3>
+        <p>Find rides by route & time, generate OTP.</p>
+      </div>
+
+      <div class="dash-card" onclick="location.href='myrides.html'">
+        <div class="card-icon">🗂️</div>
+        <h3>My Rides</h3>
+        <p>View rides you’ve posted or booked.</p>
+      </div>
+
+      <div class="dash-card" onclick="location.href='profile.html'">
+        <div class="card-icon">👤</div>
+        <h3>Profile</h3>
+        <p>View your college ID & profile info.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer small">
+    <p>© 2025 UniRide — built for GAT campus | Frontend-only demo</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const user = uniride.getStoredUser();
+      if(!user) { window.location.href = "login.html"; return; }
+      document.getElementById("welcomeName").textContent = `Welcome, ${user.name || 'User'} 👋`;
+
+      const logoutBtn = document.getElementById("logoutBtn");
+      logoutBtn.addEventListener("click", ()=>{
+        if(confirm("Logout from UniRide?")){
+          localStorage.removeItem('uniride_user_final_v1');
+          localStorage.removeItem('uniride_user');
+          window.location.href = "login.html";
+        }
+      });
+
+      const darkPref = localStorage.getItem("uniride_darkmode") === "1";
+      if(darkPref) document.body.classList.add("dark");
+      const darkToggle = document.getElementById("darkToggle");
+      darkToggle.textContent = darkPref ? "☀️" : "🌙";
+      darkToggle.addEventListener("click", ()=> {
+        uniride.toggleDarkMode();
+        darkToggle.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+      });
+    })();
+  </script>
+</body>
+</html>

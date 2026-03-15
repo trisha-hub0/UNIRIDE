@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UniRide — Login</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* local overrides to keep login visually consistent */
+    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,#74ebd5,#acb6e5);}
+    .login-card{width:100%;max-width:420px;background:rgba(255,255,255,0.98);border-radius:14px;padding:22px;box-shadow:0 12px 30px rgba(6,30,60,0.12);backdrop-filter:blur(6px);}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .logo{width:44px;height:44px;border-radius:10px;background:white;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent)}
+    label{display:block;font-weight:600;margin-top:12px;font-size:13px}
+    .img-preview{max-width:120px;border-radius:8px;margin-top:8px;border:1px solid #e6eefc}
+    .actions{display:flex;gap:8px;margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card" role="main" aria-labelledby="loginTitle">
+      <div class="brand">
+        <div class="logo">UR</div>
+        <div>
+          <h1 id="loginTitle">UniRide</h1>
+          <div class="small">Campus carpool — GAT students & staff only</div>
+        </div>
+      </div>
+
+      <form id="loginForm" onsubmit="return false;">
+        <label for="fullName">Full name</label>
+        <input id="fullName" type="text" placeholder="Your full name" autocomplete="name" required>
+
+        <label for="email">College Email (name@gat.ac.in)</label>
+        <input id="email" type="email" placeholder="name@gat.ac.in" autocomplete="email" required>
+        <div id="emailHint" class="hint">Only <strong>@gat.ac.in</strong> addresses are allowed.</div>
+
+        <label for="phone">Phone number</label>
+        <input id="phone" type="tel" placeholder="10-digit phone number" inputmode="tel" required>
+
+        <label for="role">I am a</label>
+        <select id="role" required>
+          <option value="">Select role</option>
+          <option value="driver">Driver — I will post rides</option>
+          <option value="passenger">Passenger — I will search & book</option>
+        </select>
+
+        <label for="photo">Profile photo (optional)</label>
+        <input id="photo" type="file" accept="image/*">
+        <img id="photoPreview" class="img-preview hidden" alt="Profile preview">
+
+        <label for="collegeId">College ID (required)</label>
+        <input id="collegeId" type="file" accept="image/*" required>
+        <img id="idPreview" class="img-preview hidden" alt="College ID preview">
+
+        <div id="dlBlock" class="hidden">
+          <label for="dlInput">Driver's License (required for drivers)</label>
+          <input id="dlInput" type="file" accept="image/*">
+          <img id="dlPreview" class="img-preview hidden" alt="DL preview">
+        </div>
+
+        <div class="notice">
+          🔒 Your College ID, Driver's License and profile photo are stored only in your browser (localStorage) and never transmitted online in this demo.
+        </div>
+
+        <div class="actions">
+          <button id="continueBtn" class="btn">Continue</button>
+          <button type="button" class="btn secondary" id="clearBtn">Clear</button>
+        </div>
+      </form>
+
+      <div class="small" style="text-align:center;margin-top:12px;">Already have an account? Use same email to login — data stays in your browser.</div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const roleEl = document.getElementById('role');
+      const dlBlock = document.getElementById('dlBlock');
+      const photoInput = document.getElementById('photo');
+      const photoPreview = document.getElementById('photoPreview');
+      const collegeIdInput = document.getElementById('collegeId');
+      const idPreview = document.getElementById('idPreview');
+      const dlInput = document.getElementById('dlInput');
+      const dlPreview = document.getElementById('dlPreview');
+      const continueBtn = document.getElementById('continueBtn');
+      const clearBtn = document.getElementById('clearBtn');
+
+      roleEl.addEventListener('change', ()=> {
+        dlBlock.classList.toggle('hidden', roleEl.value !== 'driver');
+      });
+
+      photoInput.addEventListener('change', async (e) => {
+        const f = e.target.files[0];
+        if(!f){ photoPreview.classList.add('hidden'); return; }
+        try{ photoPreview.src = await uniride.fileToDataURL(f); photoPreview.classList.remove('hidden'); } catch(e){ alert("Failed to read photo"); }
+      });
+      collegeIdInput.addEventListener('change', async (e) => {
+        const f = e.target.files[0];
+        if(!f){ idPreview.classList.add('hidden'); return; }
+        try{ idPreview.src = await uniride.fileToDataURL(f); idPreview.classList.remove('hidden'); } catch(e){ alert("Failed to read ID"); }
+      });
+      dlInput.addEventListener('change', async (e) => {
+        const f = e.target.files[0];
+        if(!f){ dlPreview.classList.add('hidden'); return; }
+        try{ dlPreview.src = await uniride.fileToDataURL(f); dlPreview.classList.remove('hidden'); } catch(e){ alert("Failed to read DL"); }
+      });
+
+      // clear saved demo data
+      clearBtn.addEventListener('click', ()=> {
+        if(!confirm("Clear all saved UniRide data in this browser?")) return;
+        localStorage.removeItem('uniride_user_final_v1');
+        localStorage.removeItem('uniride_user');
+        localStorage.removeItem('uniride_rides');
+        localStorage.removeItem('uniride_bookings');
+        alert("Local UniRide data cleared.");
+        document.getElementById('loginForm').reset();
+        photoPreview.classList.add('hidden'); idPreview.classList.add('hidden'); dlPreview.classList.add('hidden');
+      });
+
+      continueBtn.addEventListener('click', async ()=> {
+        const name = document.getElementById('fullName').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const role = roleEl.value;
+        const idFile = collegeIdInput.files[0];
+        const photoFile = photoInput.files[0];
+        const dlFile = dlInput.files[0];
+
+        if(!name || !email || !phone || !role || !idFile){
+          alert("Please fill name, email, phone, role and upload your College ID.");
+          return;
+        }
+        if(!email.endsWith("@gat.ac.in")){
+          alert("Only @gat.ac.in college emails are allowed.");
+          return;
+        }
+
+        try{
+          const idData = await uniride.fileToDataURL(idFile);
+          const photoData = photoFile ? await uniride.fileToDataURL(photoFile) : null;
+          const dlData = dlFile ? await uniride.fileToDataURL(dlFile) : null;
+
+          const user = {
+            id: 'u_'+Date.now(),
+            name, email, phone, role,
+            idData, dlData, photoData,
+            createdAt: Date.now()
+          };
+          uniride.saveUser(user);
+          alert("Login successful — redirecting to dashboard.");
+          window.location.href = "index.html";
+        }catch(err){
+          console.error(err);
+          alert("Failed to read files. Try smaller images (< 3MB).");
+        }
+      });
+
+      // if already logged in redirect quickly
+      (function(){
+        const existing = uniride.getStoredUser();
+        if(existing){
+          setTimeout(()=>{ window.location.href = 'index.html'; }, 300);
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

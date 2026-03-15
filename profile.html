@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniRide — Profile</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">UniRide</div>
+    <h1>My Profile</h1>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="uniride.toggleDarkMode()">🌙</button>
+      <button class="back-btn" onclick="window.location.href='index.html'">🏠</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div class="card">
+      <h2>👤 Profile Information</h2>
+
+      <div style="text-align:center;">
+        <img id="profilePhoto" src="https://via.placeholder.com/100" 
+             alt="Profile Photo" 
+             style="border-radius:50%;width:100px;height:100px;margin-bottom:10px;">
+        <br>
+        <input type="file" id="photoUpload" accept="image/*" />
+        <button id="uploadPhotoBtn" class="btn">Upload Photo</button>
+      </div>
+
+      <label><b>Full Name</b></label>
+      <input type="text" id="profileName" placeholder="Your Name">
+
+      <label><b>Email (GAT College Only)</b></label>
+      <input type="email" id="profileEmail" placeholder="name@gat.ac.in" disabled>
+
+      <label><b>Phone Number</b></label>
+      <input type="text" id="profilePhone" placeholder="Phone Number">
+
+      <label><b>College ID Card</b></label>
+      <input type="file" id="collegeID" accept="image/*,application/pdf">
+      <button id="uploadCollegeBtn" class="btn secondary">Upload College ID</button>
+
+      <div id="driverSection" style="display:none;">
+        <label><b>Driving License (DL)</b></label>
+        <input type="file" id="dlUpload" accept="image/*,application/pdf">
+        <button id="uploadDLBtn" class="btn secondary">Upload DL</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="saveProfileBtn" class="btn">💾 Save Profile</button>
+        <button id="logoutBtn" class="btn" style="background:#ff4d4d">🚪 Logout</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2025 UniRide | Safe Rides for Students</footer>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const user = uniride.getStoredUser();
+      if(!user){ alert("Please login first"); window.location.href = "login.html"; return; }
+
+      document.getElementById("profileName").value = user.name || "";
+      document.getElementById("profileEmail").value = user.email || "";
+      document.getElementById("profilePhone").value = user.phone || "";
+      document.getElementById("profilePhoto").src = user.photoData || user.photo || "https://via.placeholder.com/100";
+
+      if(user.role === "driver") document.getElementById("driverSection").style.display = "block";
+
+      document.getElementById("uploadPhotoBtn").addEventListener("click", async ()=> {
+        const f = document.getElementById("photoUpload").files[0];
+        if(!f) return alert("Select a photo");
+        const data = await uniride.fileToDataURL(f);
+        user.photoData = data;
+        uniride.saveUser(user);
+        document.getElementById("profilePhoto").src = data;
+        alert("Profile photo updated");
+      });
+
+      document.getElementById("uploadCollegeBtn").addEventListener("click", async ()=> {
+        const f = document.getElementById("collegeID").files[0];
+        if(!f) return alert("Select a file");
+        const data = await uniride.fileToDataURL(f);
+        user.idData = data;
+        uniride.saveUser(user);
+        alert("College ID uploaded");
+      });
+
+      document.getElementById("uploadDLBtn").addEventListener("click", async ()=> {
+        const f = document.getElementById("dlUpload").files[0];
+        if(!f) return alert("Select a file");
+        const data = await uniride.fileToDataURL(f);
+        user.dl = data;
+        uniride.saveUser(user);
+        alert("DL uploaded");
+      });
+
+      document.getElementById("saveProfileBtn").addEventListener("click", ()=> {
+        user.name = document.getElementById("profileName").value;
+        user.phone = document.getElementById("profilePhone").value;
+        uniride.saveUser(user);
+        alert("Profile saved");
+      });
+
+      document.getElementById("logoutBtn").addEventListener("click", ()=> {
+        if(confirm("Logout?")){
+          localStorage.removeItem('uniride_user_final_v1');
+          localStorage.removeItem('uniride_user');
+          window.location.href = "login.html";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

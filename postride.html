@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UniRide — Post a Ride</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <h1>Post a Ride</h1>
+    <div class="header-actions">
+      <button id="darkToggle" class="icon-btn" title="Toggle Dark Mode">🌙</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <section class="card">
+      <h2>📝 Offer a Ride</h2>
+      <p class="small">Provide your ride details and upload your Driving License for verification.</p>
+
+      <label>Pickup Location</label>
+      <select id="pickup">
+        <option value="">Select Pickup</option>
+        <option>RR Gate</option>
+        <option>College Gate</option>
+        <option>Global Mall</option>
+        <option>Jnana Bharathi</option>
+        <option>Uttarahalli</option>
+      </select>
+
+      <label>Drop Location</label>
+      <select id="drop">
+        <option value="">Select Drop</option>
+        <option>RR Gate</option>
+        <option>College Gate</option>
+        <option>Global Mall</option>
+        <option>Jnana Bharathi</option>
+        <option>Uttarahalli</option>
+      </select>
+
+      <label>Date</label>
+      <input type="date" id="date" />
+
+      <label>Time</label>
+      <input type="time" id="time" />
+
+      <label>Vehicle Type</label>
+      <select id="vehicleType">
+        <option value="">Select Vehicle</option>
+        <option>Car</option>
+        <option>Bike</option>
+      </select>
+
+      <label>Vehicle Number</label>
+      <input type="text" id="vehicle" placeholder="e.g. KA-05-AB-1234" />
+
+      <label>Available Seats</label>
+      <input type="number" id="seats" min="1" max="5" placeholder="e.g. 2" />
+
+      <label>Driving License Upload</label>
+      <input type="file" id="dlUpload" accept="image/*,.pdf" />
+
+      <div style="margin-top:12px;"><button id="postBtn" class="btn">Post Ride</button></div>
+    </section>
+  </main>
+
+  <footer class="footer small">
+    <p>© 2025 UniRide — verified campus carpool</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    (function(){
+      const darkPref = localStorage.getItem("uniride_darkmode") === "1";
+      if(darkPref) document.body.classList.add("dark");
+      const darkToggle = document.getElementById("darkToggle");
+      darkToggle.textContent = darkPref ? "☀️" : "🌙";
+      darkToggle.addEventListener("click", ()=> {
+        uniride.toggleDarkMode();
+        darkToggle.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+      });
+
+      const user = uniride.getStoredUser();
+      if(!user) window.location.href = "login.html";
+
+      document.getElementById("postBtn").addEventListener("click", async () => {
+        const pickup = document.getElementById("pickup").value.trim();
+        const drop = document.getElementById("drop").value.trim();
+        const date = document.getElementById("date").value;
+        const time = document.getElementById("time").value;
+        const vehicle = document.getElementById("vehicle").value.trim();
+        const seats = Number(document.getElementById("seats").value || 0);
+        const type = document.getElementById("vehicleType").value;
+        const dlFile = document.getElementById("dlUpload").files[0];
+
+        if(!pickup || !drop || !date || !time || !vehicle || !seats || !dlFile || !type){
+          alert("⚠ Please fill all ride details and upload DL.");
+          return;
+        }
+        if(pickup === drop){ alert("Pickup and Drop cannot be the same!"); return; }
+
+        try{
+          const dlData = await uniride.fileToDataURL(dlFile);
+          const fare = uniride.getFixedFare(pickup, drop);
+          const rides = uniride.getRides();
+
+          // avoid duplicate by same poster same time
+          const exists = rides.find(r => r.email === user.email && r.pickup===pickup && r.drop===drop && r.date===date && r.time===time);
+          if(exists){ alert("You already posted a ride at this time for this route."); return; }
+
+          const ride = {
+            id: Date.now(),
+            postedBy: user.name,
+            email: user.email,
+            phone: user.phone,
+            pickup, drop, date, time,
+            vehicle, vehicleType: type,
+            seats: seats,
+            fare,
+            dl: dlData,
+            booked: false,
+            createdAt: Date.now()
+          };
+          rides.push(ride);
+          uniride.saveRides(rides);
+          alert(`✅ Ride posted successfully!\nFare per person: ₹${fare}`);
+          window.location.href = "index.html";
+        } catch(err){
+          console.error(err);
+          alert("Failed to read DL file. Try a smaller file (< 3MB).");
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
